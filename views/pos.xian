@@ -1,0 +1,467 @@
+{{> head}}
+<body><div class="app-shell">{{> sidebar}}<div class="main-shell"><header class="topbar"><span class="store-badge">{{#if store.logo}}<img class="store-logo" src="{{store.logo}}" alt="">{{/if}}<strong>{{store.name}}</strong></span><strong>{{user.name}}</strong></header><main class="content">
+  <div class="page-heading"><div><p class="eyebrow">SALES</p><h1>Point of Sale</h1><p class="muted">Medicine prices, availability, and totals are verified again at checkout.</p><details class="shortcut-guide"><summary>Keyboard shortcuts</summary><div><span><kbd>F1</kbd> New transaction</span><span><kbd>F2</kbd> Void transaction</span><span><kbd>F3</kbd> Search medicine</span><span><kbd>F4</kbd> Price check</span><span><kbd>F6</kbd> Customer</span><span><kbd>Shift</kbd> + <kbd>F6</kbd> Remove customer</span><span><kbd>Alt</kbd> + <kbd>N</kbd> New customer (in the Customer dialog)</span><span><kbd>Alt</kbd> + <kbd>G</kbd> Product grid, then arrows + <kbd>Enter</kbd></span><span><kbd>Enter</kbd> Add code match / pick result</span><span><kbd>3@CODE</kbd> Add 3 pieces</span><span><kbd>↑</kbd> / <kbd>↓</kbd> Navigate results</span><span><kbd>Ctrl</kbd> + <kbd>↓</kbd> Go to cart</span><span><kbd>+</kbd> / <kbd>−</kbd> / <kbd>Del</kbd> Change or remove cart item</span><span><kbd>F5</kbd> Complete sale</span><span><kbd>F7</kbd> Discount</span><span><kbd>F8</kbd> Amount received / reference</span><span><kbd>Shift</kbd> + <kbd>F8</kbd> Exact cash</span><span><kbd>F9</kbd> Next payment method</span><span><kbd>F10</kbd> Print last receipt</span><span><kbd>Ctrl</kbd> + <kbd>Delete</kbd> Clear cart</span><span><kbd>Esc</kbd> Step back / clear search</span><span><kbd>?</kbd> All shortcuts</span></div></details></div>
+    <div class="pos-toolbar no-print">
+      <button type="button" class="button button-secondary" data-pos-action="newTransaction">New sale <kbd>F1</kbd></button>
+      <button type="button" class="button button-secondary" data-pos-action="priceCheck">Price check <kbd>F4</kbd></button>
+      <button type="button" class="button button-secondary" data-pos-action="customer">Customer <kbd>F6</kbd></button>
+      <button type="button" class="button button-danger" data-pos-action="void">Void <kbd>F2</kbd></button>
+    </div></div>
+  <form id="pos-form" class="pos-layout" method="post" action="/pos/checkout" data-user-id="{{user.id}}">
+    <input type="hidden" name="_csrf" value="{{csrfToken}}">
+    <input type="hidden" name="requestKey" value="{{checkoutKey}}">
+    <input type="hidden" id="cart-data" name="items" value="[]">
+    <input type="hidden" id="customer-id" name="customerId" value="">
+    <div class="pos-main">
+    <section class="panel">
+      <h2>Medicine search</h2>
+      <label for="medicine-search">Search medicine, generic name, brand, strength, or code</label>
+      <input id="medicine-search" type="search" autocomplete="off" placeholder="Search medicines…">
+      <div id="search-results" class="medicine-results" aria-live="polite" hidden><p class="empty-state">Search the medicine inventory to add items.</p></div>
+      {{#if gridMedicines.length}}<div class="product-grid" aria-label="Medicines">{{#each gridMedicines}}<button type="button" class="product-tile" data-grid-medicine data-id="{{id}}" data-code="{{code}}" data-name="{{name}}" data-strength="{{strength}}" data-price="{{price}}" data-stock="{{stock}}" data-rx="{{#if requiresPrescription}}1{{/if}}"><strong>{{name}}</strong><small>{{strength}} · {{code}}</small><span class="product-price">₱{{price}}</span><small>{{stock}} in stock{{#if requiresPrescription}} · Rx{{/if}}</small></button>{{/each}}</div>{{/if}}
+    </section>
+    <section class="panel">
+      <div class="panel-heading"><div><h2>Shopping cart <small id="cart-count" class="muted">0 items</small></h2><p class="muted">Selected medicines and quantities</p></div><button id="clear-cart" class="button button-secondary" type="button">Clear cart</button></div>
+      <div id="cart-items" class="cart-items" aria-live="polite"><p class="empty-state">Your cart is empty.</p></div>
+    </section>
+    </div>
+    <section class="panel checkout-panel">
+      <h2>Payment</h2>
+      <div class="pay-total"><strong id="total">₱0.00</strong><span>Total amount</span></div>
+      <p class="customer-line">Customer: <strong id="customer-name">Walk-in customer</strong> <button type="button" id="clear-customer" class="text-link link-button" hidden data-shortcut="Shift+F6" data-shortcut-label="Remove customer">Remove</button></p>
+      <div class="totals">
+        <div><span>Subtotal</span><strong id="subtotal">₱0.00</strong></div>
+        <div><span>Discount</span><strong id="discount-total">₱0.00</strong></div>
+        <div><span>Tax ({{multiply taxRate 100}}%)</span><strong id="tax-total">₱0.00</strong></div>
+      </div>
+      <label>Discount (₱)<input id="discount" type="number" name="discount" min="0" step="0.01" value="0"></label>
+      <label>Payment method
+        <select name="paymentMethod" id="payment-method" required>
+          <option value="cash">Cash</option><option value="mobile">GCash or Maya</option><option value="card">Debit or credit card</option>
+        </select>
+      </label>
+      <label id="provider-field" hidden>Mobile payment provider
+        <select name="paymentProvider" id="payment-provider">
+          <option value="">Select provider</option><option value="gcash">GCash</option><option value="maya">Maya</option>
+        </select>
+      </label>
+      <label id="reference-field" hidden>Payment reference
+        <input id="payment-reference" name="paymentReference" type="text" maxlength="120" autocomplete="off" placeholder="Enter the payment reference">
+      </label>
+      <p id="external-payment-note" class="small-muted" hidden>External payments are recorded for reconciliation; no payment gateway is connected.</p>
+      <label id="received-field">Amount received (₱)<input id="amount-received" name="amountReceived" type="number" min="0" step="0.01" required></label>
+      <p id="change-line" class="muted">Change: <strong id="change-due">₱0.00</strong></p>
+      <p class="small-muted">Stock deductions and transaction records are committed together. A failed checkout does not reduce inventory.</p>
+      <div class="pos-actions"><button id="print-last-receipt" class="button button-secondary" type="button" disabled>Print last receipt</button><button id="complete-sale" class="button button-primary full-width" type="submit">Complete sale</button></div>
+    </section>
+  </form>
+
+  <!-- POS dialogs (logic in /js/pos-dialogs.js). Kept outside #pos-form so Enter does not submit the sale. -->
+  <div id="voidModal" class="pc-dialog" data-modal hidden role="dialog" aria-labelledby="void-title">
+    <div class="pc-dialog-box">
+      <h2 id="void-title">Void transaction</h2>
+      <p class="muted">Enter the transaction reference (for example PC-…) or its number, the reason, and an administrator's password. The sold quantities are returned to stock.</p>
+      <label>Transaction reference or number<input id="void-reference" autocomplete="off" autofocus></label>
+      <label>Reason<textarea id="void-reason" rows="2" maxlength="500" placeholder="Why is this sale being voided?"></textarea></label>
+      <label>Administrator password<input id="void-password" type="password" autocomplete="off"></label>
+      <p id="void-message" class="dialog-message" role="alert" hidden></p>
+      <div class="dialog-actions"><button type="button" class="button button-secondary" data-modal-cancel>Cancel</button><button type="button" class="button button-danger" data-modal-submit id="void-submit">Void transaction</button></div>
+    </div>
+  </div>
+  <div id="priceCheckModal" class="pc-dialog" data-modal hidden role="dialog" aria-labelledby="price-title">
+    <div class="pc-dialog-box">
+      <h2 id="price-title">Price &amp; stock check</h2>
+      <label>Medicine code or name<input id="price-query" autocomplete="off" autofocus placeholder="Scan or type"></label>
+      <div id="price-results" class="price-results" aria-live="polite"></div>
+      <div class="dialog-actions"><button type="button" class="button button-secondary" data-modal-cancel>Close</button><button type="button" class="button button-primary" data-modal-submit id="price-submit">Check</button></div>
+    </div>
+  </div>
+  <div id="customerModal" class="pc-dialog" data-modal hidden role="dialog" aria-labelledby="customer-title">
+    <div class="pc-dialog-box">
+      <h2 id="customer-title">Customer</h2>
+      <label>Loyalty card number<input id="customer-card" autocomplete="off" autofocus></label>
+      <p id="customer-message" class="dialog-message" role="alert" hidden></p>
+      <div class="dialog-actions"><button type="button" class="button button-secondary" data-modal-cancel>Cancel</button><button type="button" class="button button-primary" data-modal-submit id="customer-lookup">Look up</button></div>
+      <details id="customer-new"><summary data-shortcut="Alt+N" data-shortcut-label="New customer">New customer</summary>
+        <form id="customer-form" class="stack-form compact-form">
+          <label>Customer name<input name="name" required minlength="2" maxlength="120" autocomplete="off"></label>
+          <label>Loyalty card number<input name="cardNumber" required maxlength="60" pattern="[A-Za-z0-9_\-]+" autocomplete="off"></label>
+          <label>Phone (optional)<input name="phone" maxlength="40" autocomplete="off"></label>
+          <button class="button button-primary">Save customer</button>
+        </form>
+      </details>
+    </div>
+  </div>
+</main></div></div>
+<script>
+(() => {
+  const form = document.getElementById("pos-form");
+  const searchInput = document.getElementById("medicine-search");
+  const resultsElement = document.getElementById("search-results");
+  const cartElement = document.getElementById("cart-items");
+  const cartInput = document.getElementById("cart-data");
+  const discountInput = document.getElementById("discount");
+  const receivedInput = document.getElementById("amount-received");
+  const paymentSelect = document.getElementById("payment-method");
+  const providerSelect = document.getElementById("payment-provider");
+  const referenceInput = document.getElementById("payment-reference");
+  const cart = new Map();
+  const taxRate = Number("{{taxRate}}");
+  let searchTimer;
+  let searchController;
+  let lastSearch = "";
+  const money = cents => `₱${(cents / 100).toFixed(2)}`;
+  const cents = value => Math.round((Number(value) + Number.EPSILON) * 100);
+
+  const addToCart = medicine => {
+    const key = String(medicine.id);
+    const item = cart.get(key) || { ...medicine, quantity: 0 };
+    if (item.quantity >= Number(item.stock)) {
+      window.alert("No more stock is available for this item.");
+      return;
+    }
+    item.quantity += 1;
+    cart.set(key, item);
+    update();
+  };
+
+  const update = () => {
+    cartElement.replaceChildren();
+    let subtotal = 0;
+    for (const [id, item] of cart) {
+      const lineTotal = cents(item.price) * item.quantity;
+      subtotal += lineTotal;
+      const row = document.createElement("div");
+      row.className = "cart-row";
+      row.dataset.cartLine = "";
+      row.dataset.lineId = id;
+      row.dataset.medicineId = id;
+      row.dataset.stock = String(item.stock);
+      row.dataset.name = `${item.name}${item.strength ? ` ${item.strength}` : ""}`;
+      row.setAttribute("aria-label", `${row.dataset.name}, quantity ${item.quantity}`);
+      const description = document.createElement("div");
+      const name = document.createElement("strong");
+      name.textContent = `${item.name}${item.strength ? ` ${item.strength}` : ""}`;
+      const details = document.createElement("small");
+      details.textContent = `${item.code} · ${money(cents(item.price))} each · ${item.stock} in stock`;
+      const line = document.createElement("small");
+      line.className = "cart-line-total";
+      line.textContent = `Line total: ${money(lineTotal)}`;
+      description.append(name, details, line);
+
+      const quantity = document.createElement("input");
+      quantity.type = "number";
+      quantity.min = "1";
+      quantity.max = String(item.stock);
+      quantity.value = String(item.quantity);
+      quantity.dataset.qtyInput = "";
+      quantity.setAttribute("aria-label", `Quantity for ${item.name}`);
+      quantity.addEventListener("change", () => {
+        const nextQuantity = Number(quantity.value);
+        if (!Number.isInteger(nextQuantity) || nextQuantity < 1 || nextQuantity > Number(item.stock)) {
+          quantity.value = String(item.quantity);
+          return;
+        }
+        item.quantity = nextQuantity;
+        update();
+      });
+      const quantityControls = document.createElement("div");
+      quantityControls.className = "cart-quantity-controls";
+      const decrease = document.createElement("button");
+      decrease.type = "button";
+      decrease.className = "quantity-button";
+      decrease.textContent = "−";
+      decrease.dataset.qtyDec = "";
+      decrease.setAttribute("aria-label", `Decrease ${item.name} quantity`);
+      decrease.disabled = item.quantity <= 1;
+      decrease.addEventListener("click", () => {
+        item.quantity -= 1;
+        update();
+      });
+      const increase = document.createElement("button");
+      increase.type = "button";
+      increase.className = "quantity-button";
+      increase.textContent = "+";
+      increase.dataset.qtyInc = "";
+      increase.setAttribute("aria-label", `Increase ${item.name} quantity`);
+      increase.disabled = item.quantity >= Number(item.stock);
+      increase.addEventListener("click", () => {
+        if (item.quantity < Number(item.stock)) item.quantity += 1;
+        update();
+      });
+      quantityControls.append(decrease, quantity, increase);
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "text-link";
+      remove.textContent = "Remove";
+      remove.dataset.removeLine = "";
+      remove.addEventListener("click", () => { cart.delete(id); update(); });
+      row.append(description, quantityControls, remove);
+
+      if (item.requiresPrescription) {
+        const verification = document.createElement("label");
+        verification.className = "rx-check";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.name = "verifiedPrescriptionIds";
+        checkbox.value = id;
+        checkbox.disabled = !{{canVerifyPrescription}};
+        // Keep the tick when the cart is re-rendered (quantity change, another item added)
+        checkbox.checked = Boolean(item.rxVerified) && !checkbox.disabled;
+        checkbox.dataset.rxCheck = "";
+        row.dataset.rxRequired = "true";
+        row.dataset.rxVerified = String(checkbox.checked);
+        checkbox.addEventListener("change", () => {
+          item.rxVerified = checkbox.checked;
+          row.dataset.rxVerified = String(checkbox.checked);
+        });
+        verification.append(checkbox, document.createTextNode(
+          "Paper prescription checked by me as the authorized pharmacist"
+        ));
+        row.append(verification);
+      }
+      cartElement.append(row);
+    }
+    if (!cart.size) cartElement.innerHTML = '<p class="empty-state">Your cart is empty.</p>';
+    const itemCount = [...cart.values()].reduce((count, item) => count + item.quantity, 0);
+    document.getElementById("cart-count").textContent = `${itemCount} ${itemCount === 1 ? "item" : "items"}`;
+    document.getElementById("complete-sale").disabled = !cart.size;
+
+    const rawDiscount = Number(discountInput.value || 0);
+    const discount = Number.isFinite(rawDiscount) && rawDiscount >= 0
+      ? Math.min(cents(rawDiscount), subtotal) : 0;
+    const tax = Math.round((subtotal - discount) * taxRate);
+    const total = subtotal - discount + tax;
+    document.getElementById("subtotal").textContent = money(subtotal);
+    document.getElementById("discount-total").textContent = money(discount);
+    document.getElementById("tax-total").textContent = money(tax);
+    document.getElementById("total").textContent = money(total);
+    document.getElementById("total").dataset.value = (total / 100).toFixed(2);
+    document.getElementById("change-due").textContent = money(
+      Math.max(0, cents(receivedInput.value || 0) - total)
+    );
+    cartInput.value = JSON.stringify([...cart].map(([id, item]) => ({ id, quantity: item.quantity })));
+    receivedInput.min = (total / 100).toFixed(2);
+  };
+
+  const showResults = medicines => {
+    resultsElement.replaceChildren();
+    resultsElement.hidden = false;
+    if (!medicines.length) {
+      const empty = document.createElement("p");
+      empty.className = "empty-state";
+      empty.textContent = "No eligible, in-stock medicine matched that search.";
+      resultsElement.append(empty);
+      return;
+    }
+    for (const medicine of medicines) {
+      const card = document.createElement("article");
+      card.className = "medicine-result";
+      const details = document.createElement("div");
+      const name = document.createElement("strong");
+      name.textContent = `${medicine.name}${medicine.strength ? ` ${medicine.strength}` : ""}`;
+      const meta = document.createElement("small");
+      meta.textContent = [
+        medicine.code,
+        medicine.genericName,
+        medicine.brandName,
+        medicine.Category && medicine.Category.name,
+        medicine.dosageForm,
+        `${medicine.stock} available`,
+        medicine.expirationDate ? `Expires ${medicine.expirationDate}` : ""
+      ].filter(Boolean).join(" · ");
+      const price = document.createElement("span");
+      price.className = "medicine-result-price";
+      price.textContent = money(cents(medicine.price));
+      details.append(name, meta);
+      card.append(details, price);
+      if (medicine.requiresPrescription) {
+        const badge = document.createElement("span");
+        badge.className = "badge badge-warn";
+        badge.textContent = "Prescription required";
+        card.append(badge);
+      }
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "button button-secondary";
+      button.textContent = "Add to cart";
+      button.dataset.medicineResult = "";
+      button.dataset.medicineId = String(medicine.id);
+      button.dataset.medicineCode = medicine.code || "";
+      button.dataset.stock = String(medicine.stock);
+      button.setAttribute("aria-label", `Add ${name.textContent} to cart`);
+      button.addEventListener("click", () => addToCart(medicine));
+      card.append(button);
+      resultsElement.append(card);
+    }
+  };
+
+  const search = async query => {
+    if (searchController) searchController.abort();
+    searchController = new AbortController();
+    resultsElement.className = "medicine-results";
+    try {
+      const response = await fetch(`/pos/medicines?search=${encodeURIComponent(query)}`, {
+        headers: { Accept: "application/json" }, signal: searchController.signal
+      });
+      if (!response.ok) throw new Error("Medicine search is unavailable. Try again.");
+      showResults(await response.json());
+    } catch (error) {
+      if (error.name === "AbortError") return;
+      resultsElement.textContent = error.message;
+      resultsElement.className = "medicine-results alert alert-error";
+      resultsElement.hidden = false;
+    }
+  };
+
+  searchInput.addEventListener("input", () => {
+    const query = searchInput.value.trim();
+    if (query === lastSearch) return;
+    lastSearch = query;
+    clearTimeout(searchTimer);
+    if (searchController) searchController.abort();
+    if (!query) {
+      if (searchController) searchController.abort();
+      resultsElement.className = "medicine-results";
+      resultsElement.innerHTML = '<p class="empty-state">Search the medicine inventory to add items.</p>';
+      resultsElement.hidden = true;
+      return;
+    }
+    resultsElement.hidden = false;
+    searchTimer = setTimeout(() => search(query), 250);
+  });
+  discountInput.addEventListener("input", update);
+  receivedInput.addEventListener("input", update);
+  paymentSelect.addEventListener("change", () => {
+    const cash = paymentSelect.value === "cash";
+    const mobile = paymentSelect.value === "mobile";
+    document.getElementById("received-field").hidden = !cash;
+    document.getElementById("change-line").hidden = !cash;
+    receivedInput.required = cash;
+    document.getElementById("provider-field").hidden = !mobile;
+    providerSelect.required = mobile;
+    document.getElementById("reference-field").hidden = cash;
+    referenceInput.required = !cash;
+    document.getElementById("external-payment-note").hidden = cash;
+  });
+  document.getElementById("clear-cart").addEventListener("click", () => {
+    if (!cart.size || window.confirm("Clear all medicines from this cart?")) {
+      cart.clear();
+      update();
+    }
+  });
+  form.addEventListener("submit", event => {
+    if (!cart.size) {
+      event.preventDefault();
+      window.alert("Add an item before completing a sale.");
+      return;
+    }
+    const completeSale = document.getElementById("complete-sale");
+    completeSale.disabled = true;
+    completeSale.textContent = "Processing sale...";
+  });
+
+  // Product grid (Settings → Show product grid): a tile adds one piece, like a search result
+  document.querySelectorAll("[data-grid-medicine]").forEach(tile => tile.addEventListener("click", () => {
+    const data = tile.dataset;
+    addToCart({
+      id: Number(data.id), code: data.code, name: data.name, strength: data.strength,
+      price: data.price, stock: Number(data.stock), requiresPrescription: data.rx === "1"
+    });
+  }));
+
+  // Hooks used by /js/pos-keyboard.js. The server still re-checks stock,
+  // expiry, prices, prescriptions and duplicate submissions at checkout.
+  const notify = (message, type) =>
+    window.PCKeys ? window.PCKeys.toast(message, type, 3000) : window.alert(message);
+
+  window.PharmaPOS = {
+    // Enter / barcode scan / "3@CODE": add an exact code match (or the only match).
+    // Returns false when nothing was added so the search text stays in the box.
+    async addByCode(query, quantity = 1) {
+      clearTimeout(searchTimer);
+      if (searchController) searchController.abort();
+      searchController = new AbortController();
+      lastSearch = query;
+      let medicines;
+      try {
+        const response = await fetch(`/pos/medicines?search=${encodeURIComponent(query)}`, {
+          headers: { Accept: "application/json" }, signal: searchController.signal
+        });
+        if (!response.ok) throw new Error("Medicine search is unavailable. Try again.");
+        medicines = await response.json();
+      } catch (error) {
+        if (error.name !== "AbortError") notify(error.message, "error");
+        return false;
+      }
+      const wanted = query.toLowerCase();
+      const medicine = medicines.find(m => String(m.code || "").toLowerCase() === wanted) ||
+        (medicines.length === 1 ? medicines[0] : null);
+      if (!medicine) {
+        showResults(medicines);
+        if (medicines.length) {
+          resultsElement.querySelector("[data-medicine-result]")?.focus();
+          notify(`${medicines.length} matches. Use ↑/↓ then Enter.`);
+        } else {
+          notify(`No eligible, in-stock medicine found for "${query}".`, "error");
+        }
+        return false;
+      }
+      const key = String(medicine.id);
+      const inCart = cart.get(key)?.quantity || 0;
+      if (inCart + quantity > Number(medicine.stock)) {
+        notify(`Only ${medicine.stock} in stock${inCart ? ` (${inCart} already in cart)` : ""}.`, "error");
+        return false;
+      }
+      const item = cart.get(key) || { ...medicine, quantity: 0 };
+      item.quantity += quantity;
+      cart.set(key, item);
+      update();
+      return true;
+    },
+    // F1: empty the cart and reset the payment panel
+    newTransaction() {
+      cart.clear();
+      discountInput.value = "0";
+      receivedInput.value = "";
+      referenceInput.value = "";
+      providerSelect.value = "";
+      paymentSelect.value = "cash";
+      paymentSelect.dispatchEvent(new Event("change"));
+      searchInput.value = "";
+      searchInput.dispatchEvent(new Event("input"));
+      window.PharmaPOSDialogs?.clearCustomer();
+      update();
+    },
+    // F7: the discount is entered as a peso amount
+    discount() {
+      discountInput.focus();
+      discountInput.select();
+    },
+    // F5 with an unverified prescription item: go to its checkbox
+    rxVerify() {
+      const box = cartElement.querySelector("[data-rx-check]:not(:checked):not(:disabled)");
+      if (box) box.focus();
+      else notify("A pharmacist or admin must verify the prescription before this sale.", "warn");
+    }
+  };
+  update();
+})();
+</script>
+<script>
+  window.PHARMACORE_POS_CONFIG = {
+    search: "#medicine-search",
+    results: "#search-results",
+    cart: "#cart-items",
+    paymentMethod: "#payment-method",
+    amountReceived: "#amount-received",
+    paymentReference: "#payment-reference",
+    total: "#total",
+    buttons: { complete: "#complete-sale", print: "#print-last-receipt", clearCart: "#clear-cart" }
+  };
+</script>
+<script src="/js/pos-keyboard.js" defer></script>
+<script src="/js/pos-dialogs.js" defer></script>
+<script src="/js/pos-shortcuts.js" defer></script>
+{{> footer}}

@@ -1,0 +1,6 @@
+{{> head}}
+<body><div class="app-shell">{{> sidebar}}<div class="main-shell"><header class="topbar">Sales history<strong>{{user.name}}</strong></header><main class="content">
+  <div class="page-heading"><div><p class="eyebrow">SALES HISTORY</p><h1>Transactions</h1><p class="muted">Every sale with its original prices and items{{#if isCashier}} (only sales you processed){{/if}}. Open one to view or reprint its receipt.</p></div><a class="button button-primary" href="/pos">Open POS</a></div>
+  {{> history-tabs}}
+  {{> sales-transactions}}
+</main></div></div><script src="/js/page-keyboard.js" defer></script>{{> footer}}

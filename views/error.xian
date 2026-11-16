@@ -1,0 +1,2 @@
+{{> head}}
+<body class="auth-page"><main class="auth-card"><p class="eyebrow">PHARMACORE</p><h1>{{title}}</h1><p class="muted">{{message}}</p><a class="button button-primary" href="/dashboard">Go to dashboard</a></main>{{> footer}}

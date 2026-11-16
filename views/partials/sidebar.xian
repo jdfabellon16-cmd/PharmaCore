@@ -1,0 +1,20 @@
+<aside class="sidebar">
+  <a href="/dashboard" class="brand"><span class="brand-mark">+</span><span>PharmaCore<small>Pharmacy management</small></span></a>
+  <nav aria-label="Main navigation">
+    <a href="/dashboard" data-shortcut="Alt+Shift+1" data-shortcut-hint="off">Dashboard</a>
+    <a href="/pos" data-shortcut="Alt+Shift+2" data-shortcut-hint="off">Point of Sale</a>
+    <a href="/medicines" data-shortcut="Alt+Shift+3" data-shortcut-hint="off">Medicines</a>
+    {{#if isAdmin}}<a href="/categories" data-shortcut="Alt+Shift+4" data-shortcut-hint="off">Categories</a><a href="/suppliers" data-shortcut="Alt+Shift+5" data-shortcut-hint="off">Suppliers</a>{{/if}}
+    {{#if isAdmin}}<a href="/inventory" data-shortcut="Alt+Shift+6" data-shortcut-hint="off">Inventory</a>{{/if}}
+    {{#if isPharmacist}}<a href="/inventory" data-shortcut="Alt+Shift+6" data-shortcut-hint="off">Inventory</a>{{/if}}
+    <a href="/transactions" data-shortcut="Alt+Shift+7" data-shortcut-hint="off">Sales history</a>
+    {{#if isAdmin}}<a href="/reports" data-shortcut="Alt+Shift+8" data-shortcut-hint="off">Reports</a><a href="/branches" data-shortcut="Alt+Shift+B" data-shortcut-hint="off">Branches</a><a href="/users" data-shortcut="Alt+Shift+9" data-shortcut-hint="off">User management</a><a href="/settings" data-shortcut="Alt+Shift+0" data-shortcut-hint="off">Settings</a>{{/if}}
+    {{#if isPharmacist}}<a href="/reports" data-shortcut="Alt+Shift+8" data-shortcut-hint="off">Reports</a>{{/if}}
+  </nav>
+  <div class="sidebar-account">
+    <span>{{user.name}}</span><small>{{user.role}}</small>
+    <form method="post" action="/logout"><input type="hidden" name="_csrf" value="{{csrfToken}}"><button type="submit" class="logout-link" data-shortcut="Alt+Shift+L" data-shortcut-hint="off" data-confirm="Sign out of PharmaCore?">Sign out</button></form>
+  </div>
+</aside>
+<script src="/js/keyboard-core.js" defer></script>
+<script src="/js/navigation-shortcuts.js" defer></script>

@@ -1,0 +1,8 @@
+<nav class="period-links" aria-label="Sales history views">
+  <a class="button button-secondary{{#if (eq historyView "transactions")}} is-active{{/if}}" href="/transactions" data-shortcut="T">Transactions</a>
+  {{#unless isCashier}}
+  <a class="button button-secondary{{#if (eq historyView "daily")}} is-active{{/if}}" href="/sales-history?period=daily{{#if selectedBranch}}&branch={{selectedBranch}}{{/if}}" data-shortcut="D">Daily totals</a>
+  <a class="button button-secondary{{#if (eq historyView "monthly")}} is-active{{/if}}" href="/sales-history?period=monthly{{#if selectedBranch}}&branch={{selectedBranch}}{{/if}}" data-shortcut="M">Monthly totals</a>
+  <a class="button button-secondary{{#if (eq historyView "yearly")}} is-active{{/if}}" href="/sales-history?period=yearly{{#if selectedBranch}}&branch={{selectedBranch}}{{/if}}" data-shortcut="Y">Yearly totals</a>
+  {{/unless}}
+</nav>

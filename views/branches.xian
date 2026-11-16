@@ -1,0 +1,17 @@
+{{> head}}
+<body><div class="app-shell">{{> sidebar}}<div class="main-shell"><header class="topbar">Store management<strong>{{user.name}}</strong></header><main class="content">
+  <div class="page-heading"><div><p class="eyebrow">ADMINISTRATION</p><h1>Branches</h1><p class="muted">Branches share the medicine catalog and inventory. Each sale is recorded against the branch of the staff member who made it, or the default branch set in Settings.</p></div></div>
+  <section class="panel"><h2>Add branch</h2>
+    <form class="inline-form" method="post" action="/branches" data-keyboard-form><input type="hidden" name="_csrf" value="{{csrfToken}}"><label>Branch name<input name="name" required minlength="2" maxlength="120" data-shortcut="N" data-shortcut-label="Add branch"></label><button class="button button-primary">Add branch</button></form>
+  </section>
+  <section class="panel"><h2>Sales by branch</h2>
+    <div class="table-wrap"><table data-keyboard-table><thead><tr><th>Branch</th><th class="right">Active staff</th><th class="right">Transactions</th><th class="right">Completed sales</th><th></th></tr></thead><tbody>
+      {{#each branches}}<tr>
+        <td><form class="inline-form" method="post" action="/branches/{{id}}/rename"><input type="hidden" name="_csrf" value="{{../csrfToken}}"><input name="name" value="{{name}}" required minlength="2" maxlength="120" aria-label="Branch name" data-row-key="E" data-shortcut-label="Rename"><button class="button button-secondary">Rename</button></form>{{#if isDefault}}<span class="badge badge-ok">Default</span>{{/if}}</td>
+        <td class="right">{{staff}}</td><td class="right">{{transactions}}</td><td class="right">₱{{total}}</td>
+        <td class="right"><a class="text-link" href="/sales-history?branch={{id}}" data-row-key="Enter">View sales</a></td>
+      </tr>{{else}}<tr data-no-row><td colspan="5" class="empty-state">No branches yet. Add one above.</td></tr>{{/each}}
+      {{#if unassigned}}<tr><td><em>No branch</em><small class="table-sub">Sales made before branches were set up</small></td><td></td><td class="right">{{unassigned.transactions}}</td><td class="right">₱{{unassigned.total}}</td><td></td></tr>{{/if}}
+    </tbody></table></div>
+  </section>
+</main></div></div><script src="/js/page-keyboard.js" defer></script>{{> footer}}

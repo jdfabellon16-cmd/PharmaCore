@@ -1,0 +1,15 @@
+{{> head}}
+<body><div class="app-shell">{{> sidebar}}<div class="main-shell"><header class="topbar">System configuration<strong>{{user.name}}</strong></header><main class="content">
+  <div class="page-heading"><div><p class="eyebrow">ADMINISTRATION</p><h1>Settings</h1><p class="muted">Operational configuration is kept outside the source code.</p></div></div>
+  <section class="panel settings-copy"><h2>Store</h2>
+    <form class="stack-form" method="post" action="/settings/store" enctype="multipart/form-data" data-keyboard-form><input type="hidden" name="_csrf" value="{{csrfToken}}">
+      <label>Store name<input name="storeName" value="{{settings.storeName}}" required maxlength="80" data-shortcut="S" data-shortcut-label="Edit store settings"></label>
+      <label>Default branch<select name="defaultBranchId"><option value="">None</option>{{#each branches}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select><small>Used for sales by staff who have no branch of their own. Manage branches on the <a class="text-link" href="/branches">Branches</a> page.</small></label>
+      <label>Store logo<input type="file" name="logo" accept="image/png,image/jpeg,image/webp"><small>PNG, JPG or WebP, up to 2 MB. Shown on the POS and on receipts.</small></label>
+      {{#if settings.storeLogo}}<div class="store-badge"><img class="store-logo" src="{{settings.storeLogo}}" alt="Current logo"><label class="check-label"><input type="checkbox" name="removeLogo"> Remove logo</label></div>{{/if}}
+      <label class="check-label"><input type="checkbox" name="showProductGrid" {{#if (eq settings.showProductGrid "1")}}checked{{/if}}> Show a clickable medicine grid on the POS</label>
+      <label class="check-label"><input type="checkbox" name="printAfterSale" {{#if (eq settings.printAfterSale "1")}}checked{{/if}}> Open the print dialog after each sale</label>
+      <div><button class="button button-primary">Save store settings</button></div>
+    </form></section>
+  <section class="panel settings-copy"><h2>Sales tax</h2><p>Saved tax rate: <strong>{{taxRate}}%</strong></p><form class="inline-form" method="post" action="/settings" data-keyboard-form><input type="hidden" name="_csrf" value="{{csrfToken}}"><label>Tax rate (%)<input type="number" name="taxRatePercent" data-shortcut="T" data-shortcut-label="Edit tax rate" min="0" max="100" step="0.01" value="{{taxRate}}" required></label><button class="button button-primary">Save setting</button></form><p>The saved rate is used by the server for new POS transactions. A rate is stored as a decimal in the database.</p><h2>Session and database</h2><p>Database connection and session signing keys are read from environment variables. Do not commit credentials or use default production secrets.</p></section>
+</main></div></div><script src="/js/page-keyboard.js" defer></script>{{> footer}}

@@ -1,0 +1,22 @@
+{{> head}}
+<body>
+  <div class="app-shell">{{> sidebar}}<div class="main-shell"><header class="topbar"><span>Pharmacy operations</span><strong>{{user.name}}</strong></header><main class="content">
+    <div class="page-heading"><div><p class="eyebrow">OVERVIEW</p><h1>Dashboard</h1><p class="muted">Today's activity and inventory health.</p></div><a class="button button-primary" href="/pos">Start a sale</a></div>
+    <section class="stat-grid">
+      <article class="stat-card"><span>Registered medicines</span><strong>{{stats.medicineCount}}</strong><small>Unique medicine records</small></article>
+      <article class="stat-card"><span>Units in stock</span><strong>{{stats.stockCount}}</strong><small>Across active inventory</small></article>
+      <article class="stat-card"><span>Low stock</span><strong>{{stats.lowStock}}</strong><small><a href="/inventory" data-shortcut="L" data-shortcut-label="Low-stock medicines">Review inventory →</a></small></article>
+      <article class="stat-card"><span>Expiring in 30 days</span><strong>{{stats.expirationCount}}</strong><small><a href="/inventory" data-shortcut="X" data-shortcut-label="Expiring medicines">Check expiry alerts →</a></small></article>
+      <article class="stat-card"><span>Sales today</span><strong>₱{{stats.salesToday}}</strong><small>{{stats.saleCount}} completed transactions</small></article>
+      <article class="stat-card"><span>This month's sales</span><strong>₱{{stats.salesMonth}}</strong><small>{{#unless isCashier}}<a href="/sales-history?period=monthly" data-shortcut="M" data-shortcut-label="Monthly sales">View monthly sales →</a>{{else}}Completed sales{{/unless}}</small></article>
+      <article class="stat-card"><span>This year's sales</span><strong>₱{{stats.salesYear}}</strong><small>{{#unless isCashier}}<a href="/sales-history?period=yearly" data-shortcut="Y" data-shortcut-label="Yearly sales">View yearly sales →</a>{{else}}Completed sales{{/unless}}</small></article>
+    </section>
+    <section class="panel"><div class="panel-heading"><div><h2>Recent transactions</h2><p class="muted">Latest completed sales</p></div><a href="/transactions" class="text-link" data-shortcut="T" data-shortcut-label="Transactions">View all →</a></div>
+      {{#if recentSales.length}}
+      <div class="table-wrap"><table data-keyboard-table><thead><tr><th>Reference</th><th>Date</th><th>Processed by</th><th>Payment</th><th class="right">Total</th></tr></thead><tbody>
+      {{#each recentSales}}<tr><td><a class="text-link" href="/transactions/{{id}}">{{reference}}</a></td><td>{{createdAt}}</td><td>{{User.name}}</td><td><span class="badge">{{paymentMethod}}</span></td><td class="right">₱{{total}}</td></tr>{{/each}}
+      </tbody></table></div>{{else}}<p class="empty-state">No completed sales yet. Your transactions will appear here.</p>{{/if}}
+    </section>
+  </main></div></div>
+<script src="/js/page-keyboard.js" defer></script>
+{{> footer}}

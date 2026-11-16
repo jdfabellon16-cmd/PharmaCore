@@ -1,0 +1,2 @@
+{{> head}}
+<body class="auth-page"><main class="auth-card"><a class="brand auth-brand" href="/"><span class="brand-mark">+</span><span>PharmaCore<small>Pharmacy management</small></span></a><h1>Manage pharmacy operations with confidence.</h1><p class="muted">Inventory, point of sale, and transaction records in one secure workspace.</p><a class="button button-primary full-width" href="/login">Staff sign in</a></main>{{> footer}}
